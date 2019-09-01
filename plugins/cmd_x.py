@@ -151,3 +151,37 @@ def cmd_update(args):
     build_queue(args)
 
     checkout_branch(original_branch)
+
+#--------------------------------------------------------------------------------------------------------
+reverse_port = 3108
+
+def args_proxy(parser):
+     parser.add_argument(
+        "--stop",
+        dest="stop",
+        action="store_true",
+        help="Stop reversed proxy",
+        default=False)
+
+def cmd_proxy(args):
+    """Manage reverse proxy on local machine"""
+    server = 'leonro@10.137.188.1'
+    try:
+        ssh_pid = subprocess.check_output(['pgrep', '-f', 'ssh -N -R %s:localhost:22 ' %(reverse_port) + server])
+        subprocess.call(['kill', '-9', ssh_pid.strip().decode("utf-8").strip('"')])
+    except subprocess.CalledProcessError:
+        pass
+
+    try:
+        status = subprocess.check_output(['sudo', 'systemctl', 'is-active', 'sshd'])
+        args.stop = True
+    except subprocess.CalledProcessError:
+        pass
+
+    if args.stop:
+        print('SSH daemon is active, closing reverse proxy');
+        subprocess.check_call(['sudo', 'systemctl', 'stop', 'sshd'])
+    else:
+        print('SSH daemon is inactive, starting reverse proxy');
+        subprocess.check_call(['sudo', 'systemctl', 'restart', 'sshd'])
+        subprocess.Popen(['ssh', '-N', '-R', '%s:localhost:22' % (reverse_port), server], close_fds=True)
