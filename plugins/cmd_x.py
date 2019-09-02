@@ -185,3 +185,43 @@ def cmd_proxy(args):
         print('SSH daemon is inactive, starting reverse proxy');
         subprocess.check_call(['sudo', 'systemctl', 'restart', 'sshd'])
         subprocess.Popen(['ssh', '-N', '-R', '%s:localhost:22' % (reverse_port), server], close_fds=True)
+
+#--------------------------------------------------------------------------------------------------------
+def xremote_call(args):
+    """Run X command on remote server"""
+    return subprocess.call([
+        'ssh', '-p', str(reverse_port), 'leonro@localhost', 'DISPLAY=:0'] + args)
+
+def args_web(parser):
+    parser.add_argument(
+        "--rev",
+        nargs=1,
+        default=['HEAD'],
+        help="Commit to check")
+
+def cmd_web(args):
+    """Open links founded in commit"""
+    message = git_output(['show', '--no-patch'] + args.rev)
+    message = message.splitlines()
+
+    urls = []
+    for line in message:
+        line = line.split()
+        if len(line) < 2:
+            continue
+
+        word = line[0].lower()
+        link = None
+        if word == "issue:" and line[1].isdigit():
+            link = 'https://redmine.mellanox.com/issues/%s' % (line[1])
+        if word == "change-id:":
+            link = 'http://l-gerrit.mtl.labs.mlnx:8080/#/q/change:%s' % (line[1])
+        if word == "link:":
+            link = line[1]
+
+        if link is not None:
+            urls.append('-url')
+            urls.append(link)
+
+    cmd = ['firefox', '-new-tab'] + urls
+    xremote_call(cmd)
