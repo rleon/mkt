@@ -225,3 +225,30 @@ def cmd_web(args):
 
     cmd = ['firefox', '-new-tab'] + urls
     xremote_call(cmd)
+
+#--------------------------------------------------------------------------------------------------------
+def args_upload(parser):
+    pass
+
+def cmd_upload(args):
+    """Upload to k.o."""
+
+    git_call(["fetch", "linus", "--tags", "--force"])
+    git_call(["fetch", "rdma", "--tags", "--force"])
+    git_call(["fetch", "s", "--tags", "--force"])
+
+    original_br = checkout_branch("master")
+    reset_branch("s/master")
+
+    print("========================= Insert NitroKey =========================");
+    input();
+    subprocess.call(["git", "push", "-f", "origin",
+        "s/rdma-next:rdma-next", "s/rdma-rc:rdma-rc",
+        "s/testing/rdma-next:testing/rdma-next",
+        "s/testing/rdma-rc:testing/rdma-rc", "s/master:master",
+        "mlx-next", "mlx-rc"])
+    git_call(["push", "-f", "ml", "s/master:master",
+        "s/queue-next:queue-next", "s/queue-rc:queue-rc"])
+    git_call(["push", "ml", "s/mlx5-next:mlx5-next"])
+
+    checkout_branch(original_br)
