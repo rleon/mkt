@@ -147,8 +147,13 @@ def cmd_update(args):
     update_tags(args)
     forward_branches(args)
 
-    build_testing(args)
-    build_queue(args)
+    is_master = is_uptodate("master", "origin/master")
+    is_next = is_uptodate("rdma-next", "origin/rdma-next")
+    is_rc = is_uptodate("rdma-rc", "origin/rdma-rc")
+
+    if not is_master or not is_next or not is_rc:
+        build_testing(args)
+        build_queue(args)
 
     checkout_branch(original_branch)
 
