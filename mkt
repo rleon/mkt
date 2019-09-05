@@ -18,7 +18,9 @@ cmd_modules = {
     "cmd_modules",
     "cmd_run",
     "cmd_setup",
-    "cmd_x",
+    # Private commands
+    "cmd_repo",
+    "cmd_review",
 }
 
 if __name__ == "__main__":

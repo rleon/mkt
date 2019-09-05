@@ -103,3 +103,12 @@ def git_checkout_branch(branch=None):
     if prev != branch:
         git_call(["checkout", branch])
     return prev
+
+def git_simple_output(args):
+    """Run git and return the output"""
+    try:
+        o = subprocess.check_output(['git', ] + args)
+    except subprocess.CalledProcessError:
+        return None
+
+    return o.strip().decode("utf-8")
