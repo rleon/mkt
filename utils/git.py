@@ -82,3 +82,24 @@ def git_commit_id(thing, fail_is_none=False):
     converted to a object ID"""
     return git_ref_id(
         bytes_join(thing, "^{commit}"), fail_is_none=fail_is_none)
+
+def git_fetch(remote):
+    """Run git fetch on specific remote"""
+    return git_call(["fetch", remote, "--tags", "--force"])
+
+def git_reset_branch(commit):
+    """Reset to specific commit"""
+    git_call(["reset", "--hard", commit])
+
+def git_checkout_branch(branch=None):
+    """Checkout specific branch and return previous branch"""
+    prev = git_output(["symbolic-ref", "--short", "-q", "HEAD"])
+    if prev is None:
+        exit("You are not in any branch, exciting ...");
+
+    if branch is None:
+        return prev;
+
+    if prev != branch:
+        git_call(["checkout", branch])
+    return prev

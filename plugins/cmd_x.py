@@ -2,18 +2,13 @@
 """
 import os
 import utils
+from utils.git import *
 import subprocess
 
 section = utils.load_config_file()
 kernel_src = section['kernel']
 
-def git_call(args):
-    """Run git and display the output to the terminal"""
-    return subprocess.check_call([
-        'git',
-    ] + args, cwd=kernel_src)
-
-def git_output(args):
+def x_git_output(args):
     """Run git and return the output"""
     try:
         o = subprocess.check_output(['git', ] + args, cwd=kernel_src)
@@ -21,23 +16,6 @@ def git_output(args):
         return None
 
     return o.strip().decode("utf-8")
-
-def checkout_branch(branch=None):
-    """Checkout specific branch and return previous branch"""
-    prev = git_output(["symbolic-ref", "--short", "-q", "HEAD"])
-    if prev is None:
-        exit("You are not in any branch, exciting ...");
-
-    if branch is None:
-        return prev;
-
-    if prev != branch:
-        git_call(["checkout", branch])
-    return prev
-
-def reset_branch(commit):
-    """Reset to specific commit"""
-    git_call(["reset", "--hard", commit])
 
 def is_uptodate(a, b):
     if a == b:
@@ -61,15 +39,15 @@ def build_testing(args):
     testing = { 'testing/rdma-rc': ( 'rdma-rc' , 'master' ),
             'testing/rdma-next' : ( 'testing/rdma-rc' , 'rdma-next' )}
     for key, value in testing.items():
-        checkout_branch(key)
-        reset_branch(value[0])
+        git_checkout_branch(key)
+        git_reset_branch(value[0])
         merge_with_rerere(value[1])
 
 def build_queue(args):
     queue = ('rc', 'next')
     for item in queue:
-        checkout_branch("queue-%s" % (item))
-        reset_branch("saeed/net-%s" % (item))
+        git_checkout_branch("queue-%s" % (item))
+        git_reset_branch("saeed/net-%s" % (item))
         merge_with_rerere("testing/rdma-%s" % (item))
 
 def update_mlx5_next(args):
@@ -77,8 +55,8 @@ def update_mlx5_next(args):
     if is_uptodate("mlx5-next", "ml/mlx5-next"):
         return
 
-    checkout_branch("mlx5-next")
-    reset_branch("ml/mlx5-next")
+    git_checkout_branch("mlx5-next")
+    git_reset_branch("ml/mlx5-next")
 
 def update_master(args):
     """master branch"""
@@ -88,8 +66,8 @@ def update_master(args):
     if is_uptodate("master", linus_tag):
         return
 
-    checkout_branch("master")
-    reset_branch(linus_tag)
+    git_checkout_branch("master")
+    git_reset_branch(linus_tag)
 
 def update_tags(args):
     """tags update"""
@@ -139,23 +117,24 @@ def args_update(parser):
 def cmd_update(args):
     """Update kernel branches"""
 
-    git_call(["remote", "update", "--prune"])
-    original_branch = checkout_branch();
+    with in_directory(kernel_src):
+        git_call(["remote", "update", "--prune"])
+        original_branch = git_checkout_branch();
 
-    update_mlx5_next(args)
-    update_master(args)
-    update_tags(args)
-    forward_branches(args)
+        update_mlx5_next(args)
+        update_master(args)
+        update_tags(args)
+        forward_branches(args)
 
-    is_master = is_uptodate("master", "origin/master")
-    is_next = is_uptodate("rdma-next", "origin/rdma-next")
-    is_rc = is_uptodate("rdma-rc", "origin/rdma-rc")
+        is_master = is_uptodate("master", "origin/master")
+        is_next = is_uptodate("rdma-next", "origin/rdma-next")
+        is_rc = is_uptodate("rdma-rc", "origin/rdma-rc")
 
-    if not is_master or not is_next or not is_rc:
-        build_testing(args)
-        build_queue(args)
+        if not is_master or not is_next or not is_rc:
+            build_testing(args)
+            build_queue(args)
 
-    checkout_branch(original_branch)
+        git_checkout_branch(original_branch)
 
 #--------------------------------------------------------------------------------------------------------
 reverse_port = 3108
@@ -206,8 +185,9 @@ def args_web(parser):
 
 def cmd_web(args):
     """Open links founded in commit"""
-    message = git_output(['show', '--no-patch'] + args.rev)
-    message = message.splitlines()
+    with in_directory(kernel_src):
+        message = x_git_output(['show', '--no-patch'] + args.rev)
+        message = message.splitlines()
 
     urls = []
     for line in message:
@@ -238,22 +218,24 @@ def args_upload(parser):
 def cmd_upload(args):
     """Upload to k.o."""
 
-    git_call(["fetch", "linus", "--tags", "--force"])
-    git_call(["fetch", "rdma", "--tags", "--force"])
-    git_call(["fetch", "s", "--tags", "--force"])
-
-    original_br = checkout_branch("master")
-    reset_branch("s/master")
-
     print("========================= Insert NitroKey =========================");
     input();
-    subprocess.call(["git", "push", "-f", "origin",
+
+    with in_directory(kernel_src):
+        git_fetch("linus")
+        git_fetch("rdma")
+        git_fetch("s")
+
+        original_br = git_checkout_branch("master")
+        git_reset_branch("s/master")
+
+        git_call(["push", "-f", "origin",
         "s/rdma-next:rdma-next", "s/rdma-rc:rdma-rc",
         "s/testing/rdma-next:testing/rdma-next",
         "s/testing/rdma-rc:testing/rdma-rc", "s/master:master",
         "mlx-next", "mlx-rc"])
-    git_call(["push", "-f", "ml", "s/master:master",
-        "s/queue-next:queue-next", "s/queue-rc:queue-rc"])
-    git_call(["push", "ml", "s/mlx5-next:mlx5-next"])
+        git_call(["push", "-f", "ml", "s/master:master",
+            "s/queue-next:queue-next", "s/queue-rc:queue-rc"])
+        git_call(["push", "ml", "s/mlx5-next:mlx5-next"])
 
-    checkout_branch(original_br)
+        git_checkout_branch(original_br)
