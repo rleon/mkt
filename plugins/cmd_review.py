@@ -3,7 +3,12 @@
 import os
 import utils
 from utils.git import *
+import utils.gerrit as gerrit
 import subprocess
+import time
+from datetime import datetime,timedelta
+import operator
+from utils.config import username
 
 section = utils.load_config_file()
 kernel_src = section['kernel']
@@ -82,3 +87,73 @@ def cmd_web(args):
 
     cmd = ['firefox', '-new-tab'] + urls
     xremote_call(cmd)
+
+#--------------------------------------------------------------------------------------------------------
+def get_review_votes(patch_set):
+    data = []
+    approvals = patch_set.get('approvals', [])
+    for ps in sorted(approvals, key=operator.itemgetter('value')):
+        data.append("Name: %s, Value: %s" %
+                (ps['by']['name'],
+                    ps['value']))
+
+    return '\n'.join(data)
+
+def build_review_list(args):
+    rev = gerrit.Query(args.host, args.port)
+
+    to_filter = []
+    if args.projects:
+        pjs = args.projects
+        projects = gerrit.OrFilter().add_items('project', pjs)
+        to_filter.append(projects)
+
+    other = gerrit.Items()
+    other.add_items('is', ['open'])
+    other.add_items('status', ['new'])
+    other.add_items('reviewer', ['self'])
+    other.add_items('label', ['Code-Review=2'], True)
+    other.add_items('label', ['ml=1'], True)
+    td = timedelta(days=30)
+    one_month = datetime.today() - td
+    other.add_items('after', ["%.4d-%.2d-%.2d" % (one_month.year, one_month.month, one_month.day)])
+
+    if args.limit is not None:
+        other.add_items('limit', args.limit)
+
+    to_filter.append(other)
+
+    data = []
+    for review in rev.filter(*to_filter):
+        last_updated = datetime.fromtimestamp(review['lastUpdated'])
+        data.append((review['number'], review['subject'][:90],
+                review.get('topic'), review['owner']['name'], last_updated))
+
+    return data
+
+def args_review(parser):
+    parser.add_argument(
+        "--limit",
+        dest="limit",
+        help="Limit amount of patches to query",
+        type=int,
+        default=100)
+
+def cmd_review(args):
+    """Review patches"""
+
+    args.projects = ["upstream/linux"]
+    args.user = username
+    args.host = "l-gerrit.mtl.labs.mlnx"
+    args.port = 29418
+
+    import texttable
+    from texttable import Texttable
+    t = Texttable(max_width=0)
+    t.set_deco(Texttable.HEADER)
+    t.set_header_align(["l", "c", "l", "l", "l"])
+    t.header(('Number', 'Subject', 'Topic', 'Owner', 'Modified Time'))
+
+    data = build_review_list(args)
+    t.add_rows(data, False)
+    print(t.draw())
