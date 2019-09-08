@@ -13,6 +13,11 @@ from utils.config import username
 section = utils.load_config_file()
 kernel_src = section['kernel']
 
+def set_gerrit_url(args):
+    args.user = username
+    args.host = "l-gerrit.mtl.labs.mlnx"
+    args.port = 29418
+
 #--------------------------------------------------------------------------------------------------------
 reverse_port = 3108
 
@@ -53,6 +58,18 @@ def xremote_call(args):
     return subprocess.call([
         'ssh', '-p', str(reverse_port), 'leonro@localhost', 'DISPLAY=:0'] + args)
 
+def gerrit_link(args, changeId):
+    rev = gerrit.Query(args.host, args.port)
+
+    to_filter = []
+    other = gerrit.Items()
+    other.add_items('change', changeId)
+    other.add_items('limit', 1)
+    to_filter.append(other)
+
+    for review in rev.filter(*to_filter):
+        return review['url']
+
 def args_web(parser):
     parser.add_argument(
         "--rev",
@@ -66,6 +83,7 @@ def cmd_web(args):
         message = git_simple_output(['show', '--no-patch'] + args.rev)
         message = message.splitlines()
 
+    set_gerrit_url(args)
     urls = []
     for line in message:
         line = line.split()
@@ -77,7 +95,7 @@ def cmd_web(args):
         if word == "issue:" and line[1].isdigit():
             link = 'https://redmine.mellanox.com/issues/%s' % (line[1])
         if word == "change-id:":
-            link = 'http://l-gerrit.mtl.labs.mlnx:8080/#/q/change:%s' % (line[1])
+            link = gerrit_link(args, line[1])
         if word == "link:":
             link = line[1]
 
@@ -143,9 +161,7 @@ def cmd_review(args):
     """Review patches"""
 
     args.projects = ["upstream/linux"]
-    args.user = username
-    args.host = "l-gerrit.mtl.labs.mlnx"
-    args.port = 29418
+    set_gerrit_url(args)
 
     import texttable
     from texttable import Texttable
