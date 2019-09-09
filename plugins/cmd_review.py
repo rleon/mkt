@@ -117,7 +117,39 @@ def get_review_votes(patch_set):
 
     return '\n'.join(data)
 
-def build_review_list(args):
+def manage_my_review(args):
+    if args.id is None and args.topic is None:
+        exit("Missing ID or topic to work on")
+
+    rev = gerrit.Query(args.host, args.port)
+
+    to_filter = []
+    other = gerrit.Items()
+    if args.topic:
+        other.add_items('topic', args.topic)
+    other.add_items('is', ['open'])
+    other.add_items('status', ['new'])
+
+    other.add_items('limit', args.limit)
+    to_filter.append(other)
+
+    email = git_simple_output(['config', 'user.email'])
+    for review in rev.filter(*to_filter):
+        if args.id and review['number'] != args.id:
+            continue
+
+        ticket = gerrit.Review(review, args.host, args.port)
+        ticket.manage_reviewers(email, args.remove_me)
+
+def print_review_list(args):
+
+    import texttable
+    from texttable import Texttable
+    t = Texttable(max_width=0)
+    t.set_deco(Texttable.HEADER)
+    t.set_header_align(["l", "c", "l", "l", "l"])
+    t.header(('Number', 'Subject', 'Topic', 'Owner', 'Modified Time'))
+
     rev = gerrit.Query(args.host, args.port)
 
     to_filter = []
@@ -135,9 +167,7 @@ def build_review_list(args):
     td = timedelta(days=30)
     one_month = datetime.today() - td
     other.add_items('after', ["%.4d-%.2d-%.2d" % (one_month.year, one_month.month, one_month.day)])
-
-    if args.limit is not None:
-        other.add_items('limit', args.limit)
+    other.add_items('limit', args.limit)
 
     to_filter.append(other)
 
@@ -147,7 +177,8 @@ def build_review_list(args):
         data.append((review['number'], review['subject'][:90],
                 review.get('topic'), review['owner']['name'], last_updated))
 
-    return data
+    t.add_rows(data, False)
+    print(t.draw())
 
 def args_review(parser):
     parser.add_argument(
@@ -156,6 +187,30 @@ def args_review(parser):
         help="Limit amount of patches to query",
         type=int,
         default=100)
+    parser.add_argument(
+        "--id",
+        dest="id",
+        help="Specific ID to work on",
+        type=int,
+        default=None)
+    parser.add_argument(
+        "--topic",
+        dest="topic",
+        help="Specific topic to work on",
+        type=str,
+        default=None)
+    parser.add_argument(
+        "--remove-me",
+        dest="remove_me",
+        help="Remove myself from reviewers list",
+        action="store_true",
+        default=False)
+    parser.add_argument(
+        "--add-me",
+        dest="add_me",
+        help="Add myself from reviewers list",
+        action="store_true",
+        default=False)
 
 def cmd_review(args):
     """Review patches"""
@@ -163,13 +218,9 @@ def cmd_review(args):
     args.projects = ["upstream/linux"]
     set_gerrit_url(args)
 
-    import texttable
-    from texttable import Texttable
-    t = Texttable(max_width=0)
-    t.set_deco(Texttable.HEADER)
-    t.set_header_align(["l", "c", "l", "l", "l"])
-    t.header(('Number', 'Subject', 'Topic', 'Owner', 'Modified Time'))
+    if args.remove_me or args.add_me:
+        manage_my_review(args)
+        return
 
-    data = build_review_list(args)
-    t.add_rows(data, False)
-    print(t.draw())
+    print_review_list(args)
+

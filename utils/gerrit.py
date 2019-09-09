@@ -211,3 +211,10 @@ class Review(Client):
 
         # True if success
         return not error
+    def manage_reviewers(self, email, remove=False):
+        if remove:
+            cmd = '-r'
+        else:
+            cmd = '-a'
+        set_cmd = ['gerrit', 'set-reviewers', cmd, email, self._review['id']]
+        self.client.exec_command(' '.join(set_cmd))
