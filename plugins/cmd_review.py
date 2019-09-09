@@ -141,6 +141,33 @@ def manage_my_review(args):
         ticket = gerrit.Review(review, args.host, args.port)
         ticket.manage_reviewers(email, args.remove_me)
 
+def pull_patch_set(args):
+    rev = gerrit.Query(args.host, args.port)
+
+    to_filter = []
+    other = gerrit.Items()
+    if args.topic:
+        other.add_items('topic', args.topic)
+        args.limit = 1
+
+    other.add_items('limit', args.limit)
+    other.add_items('is', ['open'])
+    other.add_items('status', ['new'])
+    other.add_items('reviewer', ['self'])
+
+    to_filter.append(other)
+
+    for review in rev.filter(*to_filter):
+        if args.id and review['number'] != args.id:
+            continue
+        git_call(['fetch', 'mellanox', review['currentPatchSet']['ref']])
+        git_call(['checkout', '-B', 'm/%s' % (review.get('topic')), 'FETCH_HEAD'])
+
+        if args.rebase:
+            br = { 'rdma-next-mlx': 'mlx-next', 'rdma-rc-mlx': 'mlx-rc'}
+            git_call(['rebase', '--onto', br[review['branch']],
+                '--root', 'm/%s' % (review.get('topic'))])
+
 def print_review_list(args):
 
     import texttable
@@ -211,6 +238,12 @@ def args_review(parser):
         help="Add myself from reviewers list",
         action="store_true",
         default=False)
+    parser.add_argument(
+        "--no-rebase",
+        action="store_false",
+        dest="rebase",
+        help="Skip rebase to latest development branch",
+        default=True)
 
 def cmd_review(args):
     """Review patches"""
@@ -222,5 +255,8 @@ def cmd_review(args):
         manage_my_review(args)
         return
 
-    print_review_list(args)
+    if args.id or args.topic:
+        pull_patch_set(args)
+        return
 
+    print_review_list(args)
