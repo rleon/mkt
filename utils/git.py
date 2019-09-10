@@ -91,9 +91,12 @@ def git_reset_branch(commit):
     """Reset to specific commit"""
     git_call(["reset", "--hard", commit])
 
+def git_current_branch():
+    return git_output(["symbolic-ref", "--short", "-q", "HEAD"])
+
 def git_checkout_branch(branch=None):
     """Checkout specific branch and return previous branch"""
-    prev = git_output(["symbolic-ref", "--short", "-q", "HEAD"])
+    prev = git_current_branch()
     if prev is None:
         exit("You are not in any branch, exciting ...");
 
@@ -112,3 +115,35 @@ def git_simple_output(args):
         return None
 
     return o.strip().decode("utf-8")
+
+def git_return_latest(left, right):
+    """Try to decide if "left" is newer than "right" or vice-verse"""
+
+    latest = None
+    try:
+        git_call(["merge-base", "--is-ancestor", left, right])
+        latest = right
+    except subprocess.CalledProcessError:
+        try:
+            git_call(["merge-base", "--is-ancestor", right, left])
+            latest = left
+        except subprocess.CalledProcessError:
+            pass
+
+    return latest
+
+def git_return_base(left, right):
+    """Try to get decide if "left" is based on "right" or vice-verse"""
+
+    base = None
+    try:
+        git_call(["merge-base", "--is-ancestor", left, right])
+        base = left
+    except subprocess.CalledProcessError:
+        try:
+            git_call(["merge-base", "--is-ancestor", right, left])
+            base = right
+        except subprocess.CalledProcessError:
+            pass
+
+    return base

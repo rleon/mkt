@@ -72,17 +72,7 @@ def forward_branches(args):
             'rdma-rc' : ( 'rdma/wip/jgg-for-rc', 'rdma/wip/dl-for-rc') }
 
     for key, value in branches.items():
-        latest = None
-        try:
-            git_call(["merge-base", "--is-ancestor", value[0], value[1]])
-            latest = value[1]
-        except subprocess.CalledProcessError:
-            try:
-                git_call(["merge-base", "--is-ancestor", value[1], value[0]])
-                latest = value[0]
-            except subprocess.CalledProcessError:
-                pass
-
+        latest = git_return_latest(value[0], value[1])
         if latest is None:
             exit("%s and %s diverged, send an email to Doug/Jason, exciting ..." %(value[0], value[1]))
 

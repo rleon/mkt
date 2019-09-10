@@ -141,6 +141,24 @@ def manage_my_review(args):
         ticket = gerrit.Review(review, args.host, args.port)
         ticket.manage_reviewers(email, args.remove_me)
 
+def accept_patch_set(args):
+    curr = git_current_branch().strip().decode("utf-8")
+    if not curr.startswith('m/'):
+        exit("Accept works on m/* branches only ...")
+
+    branches = { 'mlx-next': 'rdma-next', 'mlx-rc': 'rdma-rc' }
+    base = None
+    for key, value in branches.items():
+        base = git_return_base(key, curr)
+        if base is None:
+            continue
+        git_checkout_branch(value)
+
+    if base is None:
+        exit("Failed to get patch set base, need to take manually ...")
+    git_call(['cherry-pick', '%s..%s' %(base, curr)])
+    git_call(['branch', '-D', curr])
+
 def reject_patch_set(args):
    old = git_checkout_branch('rdma-next')
    if old.strip().decode("utf-8").startswith('m/'):
@@ -262,6 +280,12 @@ def args_review(parser):
         help="Reject patch set and post all comments for this topic",
         action="store_true",
         default=False)
+    parser.add_argument(
+        "--accept",
+        dest="accept",
+        help="Accept patch, put it in relevant target, upload to gerrit and put +2",
+        action="store_true",
+        default=False)
 
 def cmd_review(args):
     """Review patches"""
@@ -279,6 +303,10 @@ def cmd_review(args):
 
     if args.reject:
         reject_patch_set(args)
+        return
+
+    if args.accept:
+        accept_patch_set(args)
         return
 
     print_review_list(args)
