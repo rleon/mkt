@@ -141,6 +141,12 @@ def manage_my_review(args):
         ticket = gerrit.Review(review, args.host, args.port)
         ticket.manage_reviewers(email, args.remove_me)
 
+def reject_patch_set(args):
+   old = git_checkout_branch('rdma-next')
+   if old.strip().decode("utf-8").startswith('m/'):
+       # TODO: posting -1 to gerrit and pushing comments over all patches
+       git_call(['branch', '-D', old])
+
 def pull_patch_set(args):
     rev = gerrit.Query(args.host, args.port)
 
@@ -250,6 +256,12 @@ def args_review(parser):
         dest="rebase",
         help="Skip rebase to latest development branch",
         default=True)
+    parser.add_argument(
+        "--reject",
+        dest="reject",
+        help="Reject patch set and post all comments for this topic",
+        action="store_true",
+        default=False)
 
 def cmd_review(args):
     """Review patches"""
@@ -263,6 +275,10 @@ def cmd_review(args):
 
     if args.id or args.topic:
         pull_patch_set(args)
+        return
+
+    if args.reject:
+        reject_patch_set(args)
         return
 
     print_review_list(args)
