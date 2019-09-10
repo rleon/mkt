@@ -165,8 +165,14 @@ def pull_patch_set(args):
 
         if args.rebase:
             br = { 'rdma-next-mlx': 'mlx-next', 'rdma-rc-mlx': 'mlx-rc'}
-            git_call(['rebase', '--onto', br[review['branch']],
-                '--root', 'm/%s' % (review.get('topic'))])
+            try:
+                git_output(['rebase', '--onto', br[review['branch']],
+                    '--root', 'm/%s' % (review.get('topic'))])
+            except subprocess.CalledProcessError:
+                # Not a big deal, can't forward to latest dev branches
+                print("Aborting branch forwarding ....")
+                git_output(['rebase', '--abort'])
+
 
 def print_review_list(args):
 
