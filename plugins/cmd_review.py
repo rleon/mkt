@@ -274,18 +274,6 @@ def args_review(parser):
         dest="rebase",
         help="Skip rebase to latest development branch",
         default=True)
-    parser.add_argument(
-        "--reject",
-        dest="reject",
-        help="Reject patch set and post all comments for this topic",
-        action="store_true",
-        default=False)
-    parser.add_argument(
-        "--accept",
-        dest="accept",
-        help="Accept patch, put it in relevant target, upload to gerrit and put +2",
-        action="store_true",
-        default=False)
 
 def cmd_review(args):
     """Review patches"""
@@ -301,12 +289,27 @@ def cmd_review(args):
         pull_patch_set(args)
         return
 
-    if args.reject:
-        reject_patch_set(args)
-        return
-
-    if args.accept:
-        accept_patch_set(args)
-        return
-
     print_review_list(args)
+
+
+def args_accept(parser):
+    pass
+
+def cmd_accept(args):
+    """Accept patches"""
+
+    args.projects = ["upstream/linux"]
+    set_gerrit_url(args)
+
+    accept_patch_set(args)
+
+def args_reject(parser):
+    pass
+
+def cmd_reject(args):
+    """Reject patches"""
+
+    args.projects = ["upstream/linux"]
+    set_gerrit_url(args)
+
+    reject_patch_set(args)
