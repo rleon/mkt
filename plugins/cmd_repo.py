@@ -68,13 +68,14 @@ def update_tags(args):
             git_call(["tag", "-f", key, value])
 
 def forward_branches(args):
-    branches = {'rdma-next' : ( 'rdma/wip/dl-for-next', 'rdma/wip/jgg-for-next'),
-            'rdma-rc' : ( 'rdma/wip/jgg-for-rc', 'rdma/wip/dl-for-rc') }
+    branches = {'rdma-next' : ( 'rdma/wip/dl-for-next', 'rdma/wip/jgg-for-next', 'rdma/for-next'),
+            'rdma-rc' : ( 'rdma/wip/jgg-for-rc', 'rdma/wip/dl-for-rc', 'rdma/for-rc') }
 
     for key, value in branches.items():
         latest = git_return_latest(value[0], value[1])
         if latest is None:
-            exit("%s and %s diverged, send an email to Doug/Jason, exciting ..." %(value[0], value[1]))
+            print("%s and %s diverged, send an email to Doug/Jason, Drop an email to them ..." %(value[0], value[1]))
+            latest = value[2]
 
         try:
             git_call(["merge-base", "--is-ancestor", latest, key])
