@@ -187,14 +187,20 @@ def pull_patch_set(args):
     other = gerrit.Items()
     if args.topic:
         other.add_items('topic', args.topic)
-        args.limit = 1
+        numb_of_commits = 0
+    else:
+        other.add_items('reviewer', ['self'])
+        numb_of_commits = 1
 
     other.add_items('limit', args.limit)
     other.add_items('is', ['open'])
     other.add_items('status', ['new'])
-    other.add_items('reviewer', ['self'])
 
     to_filter.append(other)
+    if args.topic:
+        # Need to find latest commit in series
+        for review in rev.filter(*to_filter):
+            numb_of_commits = numb_of_commits + 1
 
     for review in rev.filter(*to_filter):
         if args.id and review['number'] != args.id:
@@ -207,14 +213,19 @@ def pull_patch_set(args):
             try:
                 git_output(['rebase', '--onto', br[review['branch']],
                     '--root', 'm/%s' % (review.get('topic'))])
+                count = git_simple_output(['rev-list', '--count', '%s..HEAD' %(br[review['branch']])])
             except subprocess.CalledProcessError:
                 # Not a big deal, can't forward to latest dev branches
                 print("Aborting branch forwarding ....")
                 git_output(['rebase', '--abort'])
+                # Unclear base, there is nothing to do
+                count = numb_of_commits
 
+            if numb_of_commits == int(count):
+                # we downloaded everything
+                break
 
 def print_review_list(args):
-
     import texttable
     from texttable import Texttable
     t = Texttable(max_width=0)
