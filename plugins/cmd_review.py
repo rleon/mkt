@@ -221,6 +221,7 @@ def print_review_list(args):
     other.add_items('reviewer', ['self'])
     other.add_items('label', ['Code-Review=2'], True)
     other.add_items('label', ['ml=1'], True)
+    other.add_items('reviewedby', ['self'], True)
     td = timedelta(days=30)
     one_month = datetime.today() - td
     other.add_items('after', ["%.4d-%.2d-%.2d" % (one_month.year, one_month.month, one_month.day)])
