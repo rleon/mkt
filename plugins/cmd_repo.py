@@ -93,6 +93,18 @@ def forward_branches(args):
                 exit("Fix rebase conflict, continue manually and rerun script once you are done.")
             git_call(["commit", "--no-edit"])
 
+def upload_to_gerrit(base, branch, changeid):
+    testing_br = 'm/%s' % (branch)
+    original_br = git_checkout_branch(testing_br);
+
+    git_reset_branch(base)
+    log = git_simple_output(['log', '--abbrev=12', '--format=commit %h (\"%s\")', 'HEAD..', branch])
+    git_call(['merge', '--squash', '--ff', branch])
+    message = '%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@mellanox.com>' % (branch, log, changeid)
+    git_call(['commit', '--no-edit', '-m', message])
+    git_call(['push', 'mellanox', 'HEAD:refs/for/%s-mlx/leon_testing' % (branch)])
+    git_checkout_branch(original_br)
+
 def args_update(parser):
     pass
 
@@ -111,10 +123,17 @@ def cmd_update(args):
         is_master = is_uptodate("master", "origin/master")
         is_next = is_uptodate("rdma-next", "origin/rdma-next")
         is_rc = is_uptodate("rdma-rc", "origin/rdma-rc")
-
         if not is_master or not is_next or not is_rc:
             build_testing(args)
             build_queue(args)
+        # Do it after build_* routines, because they can fail in
+        # merge conflicts and we don't want to push again to gerrit
+        if not is_next:
+            upload_to_gerrit('mellanox/rdma-next-mlx',
+                    'rdma-next', 'Iaaf0a270fff9fb7537bee5b90d53a5dff51238a8')
+        if not is_rc:
+            upload_to_gerrit('mellanox/rdma-rc-mlx',
+                    'rdma-rc', 'I57c11684febd2aa97ebb44ae82368466458dd8f4')
 
         git_checkout_branch(original_branch)
 
