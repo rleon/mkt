@@ -76,15 +76,30 @@ def args_web(parser):
         nargs=1,
         default=['HEAD'],
         help="Commit to check")
+    parser.add_argument(
+        "--gerrit-id",
+        dest="gerrit_id",
+        help="Specific ID to open",
+        type=int,
+        default=None)
 
 def cmd_web(args):
-    """Open links founded in commit"""
+    """Open links found in commit"""
+
+    urls = []
+    set_gerrit_url(args)
+    if args.gerrit_id:
+        link = gerrit_link(args, args.gerrit_id)
+        urls.append('-url')
+        urls.append(link)
+        cmd = ['firefox', '-new-tab'] + urls
+        xremote_call(cmd)
+        return
+
     with in_directory(kernel_src):
         message = git_simple_output(['show', '--no-patch'] + args.rev)
         message = message.splitlines()
 
-    set_gerrit_url(args)
-    urls = []
     for line in message:
         line = line.split()
         if len(line) < 2:
