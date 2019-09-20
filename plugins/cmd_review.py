@@ -157,6 +157,8 @@ def manage_my_review(args):
         ticket.manage_reviewers(email, args.remove_me)
 
 def accept_patch_set(args):
+    import tempfile
+
     curr = git_current_branch().strip().decode("utf-8")
     if not curr.startswith('m/'):
         exit("Accept works on m/* branches only ...")
@@ -167,11 +169,31 @@ def accept_patch_set(args):
         base = git_return_base(key, curr)
         if base is None:
             continue
+        git_output(['rebase', '--onto', value, '--root', curr])
         git_checkout_branch(value)
+        base = value
+        # First try -next
+        break
 
     if base is None:
         exit("Failed to get patch set base, need to take manually ...")
-    git_call(['cherry-pick', '%s..%s' %(base, curr)])
+
+    with tempfile.TemporaryDirectory() as D:
+        git_call(['format-patch', '-q', '--no-signoff', '%s..%s' %(base, curr), '-o', D])
+        for file in sorted(os.listdir(D)):
+            filename = os.fsdecode(file)
+            patch = os.path.join(D, filename)
+
+            subprocess.check_call(['sed', '-i', '/^Issue:[ 0-9]*/Id', patch])
+            subprocess.check_call(['sed', '-i', '/^Change-id:[ 0-9]*/Id', patch])
+
+            git_call(['interpret-trailers', '--trailer',
+                'Reviewed-by: Yishai Hadas <yishaih@mellanox.com>', '--in-place', patch])
+            git_call(['interpret-trailers', '--trailer',
+                'Signed-off-by: Leon Romanovsky <leonro@mellanox.com>', '--in-place', patch])
+
+            git_call(['am', '-q', patch])
+
     git_call(['branch', '-D', curr])
 
 def reject_patch_set(args):
