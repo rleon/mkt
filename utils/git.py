@@ -117,7 +117,7 @@ def git_simple_output(args):
     return o.strip().decode("utf-8")
 
 def git_return_latest(left, right):
-    """Try to decide if "left" is newer than "right" or vice-verse"""
+    """Try to decide if "left" is newer than "right" or vice-versa"""
 
     latest = None
     try:
@@ -133,7 +133,7 @@ def git_return_latest(left, right):
     return latest
 
 def git_return_base(left, right):
-    """Try to get decide if "left" is based on "right" or vice-verse"""
+    """Try to decide if "left" is based on "right" or vice-versa"""
 
     base = None
     try:
