@@ -156,6 +156,54 @@ def manage_my_review(args):
         ticket = gerrit.Review(review, args.host, args.port)
         ticket.manage_reviewers(email, args.remove_me)
 
+def get_changeid(patch):
+    with open(patch, 'r') as F:
+        for line in F.readlines():
+            if not line.startswith('Change-Id:'):
+                continue
+            return line.split(': ')[1]
+
+    return None
+
+def clean_patch(patch):
+    subprocess.check_call(['sed', '-i', '/^Issue:[ 0-9]*/Id', patch])
+    subprocess.check_call(['sed', '-i', '/^Change-id:[ 0-9]*/Id', patch])
+
+def git_add_rob(args, changeid, patch):
+    if changeid is None:
+        return
+
+    rev = gerrit.Query(args.host, args.port)
+
+    to_filter = []
+    if args.projects:
+        pjs = args.projects
+        projects = gerrit.OrFilter().add_items('project', pjs)
+        to_filter.append(projects)
+
+    other = gerrit.Items()
+    other.add_flags('comments')
+    other.add_items('change', [changeid])
+    other.add_items('limit', 1)
+    to_filter.append(other)
+
+    data = []
+    for review in rev.filter(*to_filter):
+        for comment in review['comments']:
+            if not comment['message'].endswith('Code-Review+1'):
+                continue
+            git_call(['interpret-trailers', '--if-exists', 'addIfDifferent', '--trailer',
+                'Reviewed-by: %s <%s>' %(comment['reviewer']['name'], comment['reviewer']['email']),
+                '--in-place', patch])
+
+def git_add_sob(patch, name=None, email=None):
+    if name is None:
+        name = git_simple_output(['config', 'user.name'])
+    if email is None:
+        email = git_simple_output(['config', 'user.email'])
+
+    git_call(['interpret-trailers', '--trailer', 'Signed-off-by: %s <%s>' %(name, email), '--in-place', patch])
+
 def accept_patch_set(args):
     import tempfile
 
@@ -184,13 +232,11 @@ def accept_patch_set(args):
             filename = os.fsdecode(file)
             patch = os.path.join(D, filename)
 
-            subprocess.check_call(['sed', '-i', '/^Issue:[ 0-9]*/Id', patch])
-            subprocess.check_call(['sed', '-i', '/^Change-id:[ 0-9]*/Id', patch])
+            changeid = get_changeid(patch)
+            git_add_rob(args, changeid, patch)
+            git_add_sob(patch)
 
-            git_call(['interpret-trailers', '--trailer',
-                'Reviewed-by: Yishai Hadas <yishaih@mellanox.com>', '--in-place', patch])
-            git_call(['interpret-trailers', '--trailer',
-                'Signed-off-by: Leon Romanovsky <leonro@mellanox.com>', '--in-place', patch])
+            clean_patch(patch)
 
             git_call(['am', '-q', patch])
 
@@ -213,6 +259,7 @@ def pull_patch_set(args):
     else:
         other.add_items('reviewer', ['self'])
         numb_of_commits = 1
+        other.add_items('change', [args.id])
 
     other.add_items('limit', args.limit)
     other.add_items('is', ['open'])
@@ -225,8 +272,6 @@ def pull_patch_set(args):
             numb_of_commits = numb_of_commits + 1
 
     for review in rev.filter(*to_filter):
-        if args.id and review['number'] != args.id:
-            continue
         git_call(['fetch', 'mellanox', review['currentPatchSet']['ref']])
         git_call(['checkout', '-B', 'm/%s' % (review.get('topic')), 'FETCH_HEAD'])
 
