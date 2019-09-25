@@ -204,6 +204,29 @@ def git_add_sob(patch, name=None, email=None):
 
     git_call(['interpret-trailers', '--trailer', 'Signed-off-by: %s <%s>' %(name, email), '--in-place', patch])
 
+def mark_accepted_in_gerrit(args, changeid):
+    if changeid is None:
+        return
+
+    rev = gerrit.Query(args.host, args.port)
+
+    to_filter = []
+    if args.projects:
+        pjs = args.projects
+        projects = gerrit.OrFilter().add_items('project', pjs)
+        to_filter.append(projects)
+
+    other = gerrit.Items()
+    other.add_items('change', [changeid])
+    other.add_items('limit', 1)
+    to_filter.append(other)
+
+    data = []
+    for review in rev.filter(*to_filter):
+        rev = gerrit.Review(review['currentPatchSet']['revision'], args.host)
+        rev.review(2)
+        rev.commit("Thanks, queued for submission")
+
 def accept_patch_set(args):
     import tempfile
 
@@ -235,6 +258,7 @@ def accept_patch_set(args):
             changeid = get_changeid(patch)
             git_add_rob(args, changeid, patch)
             git_add_sob(patch)
+            mark_accepted_in_gerrit(args, changeid)
 
             clean_patch(patch)
 
