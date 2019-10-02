@@ -144,6 +144,8 @@ def manage_my_review(args):
         other.add_items('topic', args.topic)
     other.add_items('is', ['open'])
     other.add_items('status', ['new'])
+    if args.remove_me:
+        other.add_items('reviewer', ['self'])
 
     other.add_items('limit', args.limit)
     to_filter.append(other)
@@ -299,22 +301,25 @@ def pull_patch_set(args):
         git_call(['fetch', 'mellanox', review['currentPatchSet']['ref']])
         git_call(['checkout', '-B', 'm/%s' % (review.get('topic')), 'FETCH_HEAD'])
 
+        count = numb_of_commits
         if args.rebase:
             br = { 'rdma-next-mlx': 'mlx-next', 'rdma-rc-mlx': 'mlx-rc'}
             try:
-                git_output(['rebase', '--onto', br[review['branch']],
+                git_output(['rebase', '--keep-empty', '--onto', br[review['branch']],
                     '--root', 'm/%s' % (review.get('topic'))])
                 count = git_simple_output(['rev-list', '--count', '%s..HEAD' %(br[review['branch']])])
+                if numb_of_commits == int(count):
+                    # remove cover letter
+                    git_output(['rebase', '--onto', br[review['branch']],
+                        '--root', 'm/%s' % (review.get('topic'))])
             except subprocess.CalledProcessError:
                 # Not a big deal, can't forward to latest dev branches
                 print("Aborting branch forwarding ....")
                 git_output(['rebase', '--abort'])
-                # Unclear base, there is nothing to do
-                count = numb_of_commits
 
-            if numb_of_commits == int(count):
-                # we downloaded everything
-                break
+        if numb_of_commits == int(count):
+            # we downloaded everything
+            break
 
 def print_review_list(args):
     import texttable
