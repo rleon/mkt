@@ -94,15 +94,20 @@ def forward_branches(args):
             git_call(["commit", "--no-edit"])
 
 def upload_to_gerrit(base, branch, changeid):
+    import tempfile
+
     testing_br = 'm/%s' % (branch)
     original_br = git_checkout_branch(testing_br);
 
     git_reset_branch(base)
     log = git_simple_output(['log', '--abbrev=12', '--format=commit %h (\"%s\")', 'HEAD..', branch])
     git_call(['merge', '--squash', '--ff', branch])
-    message = '%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@mellanox.com>' % (branch, log, changeid)
-    git_call(['commit', '--no-edit', '-m', message])
-    git_call(['push', 'mellanox', 'HEAD:refs/for/%s-mlx/leon_testing' % (branch)])
+
+    with tempfile.NamedTemporaryFile('w') as F:
+        F.write('%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@mellanox.com>' % (branch, log, changeid))
+        git_call(['commit', '--no-edit', '-F', F.name])
+        git_call(['push', 'mellanox', 'HEAD:refs/for/%s-mlx/leon_testing' % (branch)])
+
     git_checkout_branch(original_br)
 
 def args_update(parser):
