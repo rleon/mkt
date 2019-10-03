@@ -103,7 +103,7 @@ def upload_to_gerrit(base, branch, changeid):
     original_br = git_checkout_branch(testing_br);
 
     git_reset_branch(base)
-    log = git_simple_output(['log', '--abbrev=12', '--format=commit %h (\"%s\")', 'HEAD..', branch])
+    log = git_simple_output(['log', '-n', '100', '--abbrev=12', '--format=commit %h (\"%s\")', 'HEAD..', branch])
     git_call(['merge', '--squash', '--ff', branch])
 
     with tempfile.NamedTemporaryFile('w') as F:
