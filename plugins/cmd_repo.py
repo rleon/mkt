@@ -114,6 +114,7 @@ def upload_to_gerrit(base, branch, changeid):
 
     with tempfile.NamedTemporaryFile('w') as F:
         F.write('%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@mellanox.com>' % (branch, log, changeid))
+        F.flush()
         git_call(['commit', '--no-edit', '-F', F.name])
         git_call(['push', 'mellanox', 'HEAD:refs/for/%s-mlx/leon_testing' % (branch)])
 
