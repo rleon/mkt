@@ -20,6 +20,12 @@ def merge_with_rerere(commit):
     try:
         git_call(["merge", "--no-ff", "--no-edit", "--rerere-autoupdate", commit])
     except subprocess.CalledProcessError:
+        status = git_simple_output(["status"])
+        for line in status.splitlines():
+            if "deleted by us:" in line:
+                line = line.split(':')
+                git_call(["rm", str(line[1].lstrip())])
+
         diff = git_output(["rerere", "diff"])
         num_of_lines = len(diff.splitlines())
         if num_of_lines > 1:
