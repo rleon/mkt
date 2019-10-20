@@ -3,7 +3,6 @@
 import os
 import utils
 from utils.git import *
-import utils.gerrit as gerrit
 import subprocess
 import time
 from datetime import datetime,timedelta
@@ -11,7 +10,7 @@ import operator
 from utils.config import username
 
 section = utils.load_config_file()
-kernel_src = section['kernel']
+kernel_src = section.get('kernel', None)
 
 def set_gerrit_url(args):
     args.user = username
@@ -85,6 +84,8 @@ def args_web(parser):
 
 def cmd_web(args):
     """Open links found in commit"""
+
+    import utils.gerrit as gerrit
 
     urls = []
     set_gerrit_url(args)
@@ -401,6 +402,8 @@ def args_review(parser):
 def cmd_review(args):
     """Review patches"""
 
+    import utils.gerrit as gerrit
+
     args.projects = ["upstream/linux"]
     set_gerrit_url(args)
 
@@ -421,6 +424,8 @@ def args_accept(parser):
 def cmd_accept(args):
     """Accept patches"""
 
+    import utils.gerrit as gerrit
+
     args.projects = ["upstream/linux"]
     set_gerrit_url(args)
 
@@ -431,6 +436,8 @@ def args_reject(parser):
 
 def cmd_reject(args):
     """Reject patches"""
+
+    import utils.gerrit as gerrit
 
     args.projects = ["upstream/linux"]
     set_gerrit_url(args)

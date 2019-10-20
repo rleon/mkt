@@ -6,7 +6,7 @@ from utils.git import *
 import subprocess
 
 section = utils.load_config_file()
-kernel_src = section['kernel']
+kernel_src = section.get('kernel', None)
 
 def is_uptodate(a, b):
     if a == b:
