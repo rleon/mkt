@@ -33,12 +33,13 @@ def merge_with_rerere(commit):
         git_call(["commit", "--no-edit"])
 
 def build_testing(args):
-    testing = { 'testing/rdma-rc': ( 'rdma-rc' , 'master' ),
-            'testing/rdma-next' : ( 'testing/rdma-rc' , 'rdma-next' )}
+    testing = { 'testing/rdma-rc': ( 'rdma-rc' , ['master'] ),
+            'testing/rdma-next' : ( 'testing/rdma-rc' , ['rdma-next', 'rdma/wip/jgg-hmm'] )}
     for key, value in testing.items():
         git_checkout_branch(key)
         git_reset_branch(value[0])
-        merge_with_rerere(value[1])
+        for item in value[1]:
+            merge_with_rerere(item)
 
 def build_queue(args):
     queue = ('rc', 'next')
