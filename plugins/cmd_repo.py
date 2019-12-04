@@ -161,8 +161,6 @@ def cmd_upload(args):
     input();
 
     with in_directory(kernel_src):
-        git_fetch("linus")
-        git_fetch("rdma")
         git_fetch("s")
 
         original_br = git_checkout_branch("master")
