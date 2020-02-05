@@ -161,18 +161,11 @@ def cmd_upload(args):
     input();
 
     with in_directory(kernel_src):
-        git_fetch("s")
-
-        original_br = git_checkout_branch("master")
-        git_reset_branch("s/master")
-
         git_call(["push", "-f", "origin",
-        "s/rdma-next:rdma-next", "s/rdma-rc:rdma-rc",
-        "s/testing/rdma-next:testing/rdma-next",
-        "s/testing/rdma-rc:testing/rdma-rc", "s/master:master",
+        "rdma-next", "rdma-rc",
+        "testing/rdma-next",
+        "testing/rdma-rc", "master",
         "mlx-next", "mlx-rc"])
-        git_call(["push", "-f", "ml", "s/master:master",
-            "s/queue-next:queue-next", "s/queue-rc:queue-rc"])
-        git_call(["push", "ml", "s/mlx5-next:mlx5-next"])
-
-        git_checkout_branch(original_br)
+        git_call(["push", "-f", "ml", "master",
+            "queue-next", "queue-rc"])
+        git_call(["push", "ml", "mlx5-next"])
