@@ -34,7 +34,7 @@ def merge_with_rerere(commit):
 
 def build_testing(args):
     testing = { 'testing/rdma-rc': ( 'rdma-rc' , ['master'] ),
-            'testing/rdma-next' : ( 'testing/rdma-rc' , ['rdma-next', 'rdma/wip/jgg-hmm'] )}
+            'testing/rdma-next' : ( 'testing/rdma-rc' , ['rdma-next', 'rdma/hmm'] )}
     for key, value in testing.items():
         git_checkout_branch(key)
         git_reset_branch(value[0])
