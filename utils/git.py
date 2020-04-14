@@ -120,6 +120,16 @@ def git_return_latest(left, right):
     """Try to decide if "left" is newer than "right" or vice-versa"""
 
     latest = None
+    # Every merge window, the old WIP branches are deleted
+    try:
+        git_call(["show-branch", left])
+    except subprocess.CalledProcessError:
+        return right
+    try:
+        git_call(["show-branch", right])
+    except subprocess.CalledProcessError:
+        return left
+
     try:
         git_call(["merge-base", "--is-ancestor", left, right])
         latest = right
