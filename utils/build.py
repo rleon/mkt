@@ -49,13 +49,15 @@ class Build(object):
         return cmd + ["-w", self.src, make_image_name(image_name, docker_os)]
 
     def run_build_cmd(self, supos, build_recipe=None):
-        cmd = ["-e", "BUILD_PICKLE=%s" % (self._get_pickle())]
+        cmd = ["--privileged"]
+        cmd += ["-e", "BUILD_PICKLE=%s" % (self._get_pickle())]
         cmd += ["-v", "%s:%s:ro" %(os.getenv("HOME"), os.getenv("HOME"))]
 
         return cmd + self._run_cmd(supos, build_recipe, "build")
 
     def run_ci_cmd(self, supos):
         cmd = ["--tmpfs", "/build:rw,exec,nosuid,mode=755,size=10G"]
+        cmd += ["--privileged"]
         cmd += ["-e", "CI_PICKLE=%s" % (self._get_pickle())]
         if self.pickle["src"] != self.pickle["checkpatch_root_dir"]:
             cmd += ["-v", "%s:%s:ro" %(self.pickle["checkpatch_root_dir"], self.pickle["checkpatch_root_dir"])]
