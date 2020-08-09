@@ -122,11 +122,16 @@ def git_return_latest(left, right):
     latest = None
     # Every merge window, the old WIP branches are deleted
     try:
-        git_call(["show-branch", left])
+        git_output(["show-branch", left], null_stderr=True)
     except subprocess.CalledProcessError:
+        try:
+            git_output(["show-branch", right], null_stderr=True)
+        except subprocess.CalledProcessError:
+            return left
         return right
+
     try:
-        git_call(["show-branch", right])
+        git_output(["show-branch", right], null_stderr=True)
     except subprocess.CalledProcessError:
         return left
 

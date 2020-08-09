@@ -80,6 +80,7 @@ def forward_branches(args):
 
     for key, value in branches.items():
         latest = git_return_latest(value[0], value[1])
+        latest = git_return_latest(value[2], latest)
         if latest is None:
             print("%s and %s diverged, send an email to Doug/Jason, Drop an email to them ..." %(value[0], value[1]))
             latest = value[2]
