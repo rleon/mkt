@@ -101,7 +101,7 @@ def forward_branches(args):
                 exit("Fix rebase conflict, continue manually and rerun script once you are done.")
             git_call(["commit", "--no-edit"])
 
-def upload_to_gerrit(base, branch, changeid):
+def upload_to_gerrit(base, mbranch, branch, changeid):
     import tempfile
 
     testing_br = 'm/%s' % (branch)
@@ -112,10 +112,10 @@ def upload_to_gerrit(base, branch, changeid):
     git_call(['merge', '--squash', '--ff', branch])
 
     with tempfile.NamedTemporaryFile('w') as F:
-        F.write('%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@mellanox.com>' % (branch, log, changeid))
+        F.write('%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@nvidia.com>' % (branch, log, changeid))
         F.flush()
         git_call(['commit', '--no-edit', '-F', F.name])
-        git_call(['push', 'mellanox', 'HEAD:refs/for/%s-mlx/leon_testing' % (branch)])
+        git_call(['push', 'mellanox', 'HEAD:refs/for/%s/leon_testing' % (mbranch)])
 
     git_checkout_branch(original_br)
 
@@ -143,11 +143,16 @@ def cmd_update(args):
         # Do it after build_* routines, because they can fail in
         # merge conflicts and we don't want to push again to gerrit
         if not is_next:
-            upload_to_gerrit('mellanox/rdma-next-mlx',
+            upload_to_gerrit('mellanox/rdma-next-mlx', 'rdma-next-mlx',
                     'rdma-next', 'Iaaf0a270fff9fb7537bee5b90d53a5dff51238a8')
         if not is_rc:
-            upload_to_gerrit('mellanox/rdma-rc-mlx',
+            upload_to_gerrit('mellanox/rdma-rc-mlx', 'rdma-rc-mlx',
                     'rdma-rc', 'I57c11684febd2aa97ebb44ae82368466458dd8f4')
+
+        upload_to_gerrit('origin/master', 'master',
+                    'queue-next', 'I57c11684febd2aa97ebb44ae82368466458dd8f5')
+        upload_to_gerrit('origin/master', 'master',
+                    'queue-rc', 'I57c11684febd2aa97ebb44ae82368466458dd8f6')
 
         git_checkout_branch(original_branch)
 
