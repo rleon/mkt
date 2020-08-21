@@ -4,6 +4,7 @@ import os
 import utils
 from utils.git import *
 import subprocess
+import tempfile
 
 section = utils.load_config_file()
 kernel_src = section.get('kernel', None)
@@ -102,8 +103,6 @@ def forward_branches(args):
             git_call(["commit", "--no-edit"])
 
 def upload_to_gerrit(base, mbranch, branch, changeid):
-    import tempfile
-
     testing_br = 'm/%s' % (branch)
     original_br = git_checkout_branch(testing_br);
 
@@ -184,8 +183,6 @@ def cmd_gerrit(args):
     """Upload to gerrit to test specific patch."""
 
     with in_directory(kernel_src):
-        import tempfile
-
         branch = git_checkout_branch('m/gerrit-ci');
 
         branches = { 'mlx-next': 'rdma-next-mlx',
@@ -213,3 +210,40 @@ def cmd_gerrit(args):
             git_call(['push', 'mellanox', 'HEAD:refs/for/%s/leon_testing' % (branches[base])])
 
         git_checkout_branch(branch)
+
+#--------------------------------------------------------------------------------------------------------
+def args_mega(parser):
+    pass
+
+def cmd_mega(args):
+    """Create mega-commit to simulate latest submission queue."""
+
+    with in_directory(kernel_src):
+        branch = git_current_branch().strip().decode("utf-8")
+        if not branch.startswith('m/'):
+            exit("Works on m/* branches only ...")
+
+        branches = { 'mlx-next': 'rdma-next-mlx',
+                'mlx-rc': 'rdma-rc-mlx', 'master': 'master' }
+        base = None
+        for key in branches:
+            base = git_return_base(key, branch)
+            if base is not None:
+                break
+
+        if base is None:
+            exit("Failed to get patch set base, need to take manually ...")
+
+        sha = git_simple_output(['rev-parse', branch])
+        git_reset_branch(base)
+        log = git_simple_output(['log', '-n', '100', '--abbrev=12',
+            '--format=commit %h (\"%s\")', 'HEAD..', sha])
+        git_call(['merge', '--squash', '--ff', sha])
+
+        import random
+        numb = random.randrange(1000000000, 9999999999)
+        changeid = 'I57c11684febd2aa97ebb44ae823684' + str(numb)
+        with tempfile.NamedTemporaryFile('w') as F:
+            F.write('mega-commit based on %s\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@nvidia.com>' % (base, log, changeid))
+            F.flush()
+            git_call(['commit', '--no-edit', '-F', F.name])
