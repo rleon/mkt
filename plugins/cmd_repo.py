@@ -175,3 +175,41 @@ def cmd_upload(args):
         git_call(["push", "-f", "ml", "master",
             "queue-next", "queue-rc"])
         git_call(["push", "ml", "mlx5-next"])
+
+#--------------------------------------------------------------------------------------------------------
+def args_gerrit(parser):
+    pass
+
+def cmd_gerrit(args):
+    """Upload to gerrit to test specific patch."""
+
+    with in_directory(kernel_src):
+        import tempfile
+
+        branch = git_checkout_branch('m/gerrit-ci');
+
+        branches = { 'mlx-next': 'rdma-next-mlx',
+                'mlx-rc': 'rdma-rc-mlx', 'master': 'master' }
+        base = None
+        for key in branches:
+            base = git_return_base(key, branch)
+            if base is not None:
+                break
+
+        if base is None:
+            git_checkout_branch(branch)
+            exit("Failed to get patch set base, need to take manually ...")
+
+        git_reset_branch(base)
+        log = git_simple_output(['log', '-n', '100', '--abbrev=12',
+            '--format=commit %h (\"%s\")', 'HEAD..', branch])
+        git_call(['merge', '--squash', '--ff', branch])
+
+        changeid = 'I57c11684febd2aa97ebb44ae82368466458dd810'
+        with tempfile.NamedTemporaryFile('w') as F:
+            F.write('%s testing\n\n%s\n\nIssue: 1308201\nChange-Id: %s\nSigned-off-by: Leon Romanovsky <leonro@nvidia.com>' % (branch.strip().decode("utf-8"), log, changeid))
+            F.flush()
+            git_call(['commit', '--no-edit', '-F', F.name])
+            git_call(['push', 'mellanox', 'HEAD:refs/for/%s/leon_testing' % (branches[base])])
+
+        git_checkout_branch(branch)
