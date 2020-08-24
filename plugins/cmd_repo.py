@@ -176,10 +176,10 @@ def cmd_upload(args):
         git_call(["push", "ml", "mlx5-next"])
 
 #--------------------------------------------------------------------------------------------------------
-def args_gerrit(parser):
+def args_gtest(parser):
     pass
 
-def cmd_gerrit(args):
+def cmd_gtest(args):
     """Upload to gerrit to test specific patch."""
 
     with in_directory(kernel_src):
