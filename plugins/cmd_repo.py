@@ -194,6 +194,16 @@ def cmd_gtest(args):
                 break
 
         if base is None:
+            # Try harder, maybe we are based on mega-commii
+            line = git_simple_output(['log','-n', '50', '-1',
+                '--oneline', '--grep', 'mega-commit', branch])
+            line = line.split('on')
+            try:
+                base = line[1].strip()
+            except IndexError:
+                pass
+
+        if base is None:
             git_checkout_branch(branch)
             exit("Failed to get patch set base, need to take manually ...")
 
