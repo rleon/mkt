@@ -31,6 +31,9 @@ def merge_with_rerere(commit):
         num_of_lines = len(diff.splitlines())
         if num_of_lines > 1:
             exit("Fix rebase conflict, continue manually and rerun script once you are done.")
+
+        # Add removed files
+        git_call(["add", "--update"])
         git_call(["commit", "--no-edit"])
 
 def build_testing(args):
