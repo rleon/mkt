@@ -21,6 +21,7 @@ cmd_modules = {
     # Private commands
     "cmd_repo",
     "cmd_review",
+    "cmd_test",
 }
 
 if __name__ == "__main__":
