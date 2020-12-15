@@ -1,0 +1,46 @@
+From ea994a66d3cb0f5d798dda35fa6400ece5b8c164 Mon Sep 17 00:00:00 2001
+From: Elijah Shakkour <elijahsh@nvidia.com>
+Date: Mon, 14 Dec 2020 21:18:40 +0200
+Subject: [PATCH] mlx5: Avoided SimX crash when packet arrives to uninitialized
+ VF
+
+This avoids SimX crash when PF sets ESW-FDB rules to forward packet
+to VF that isn't initialized yet (i.e. INIT_HCA isn't called yet for
+this VF).
+We initialize steering data-structures for functions upon INIT_HCA.
+
+Signed-off-by: Elijah Shakkour <elijahsh@nvidia.com>
+Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
+---
+ mellanox/mlx5/mlx5_nic.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/mellanox/mlx5/mlx5_nic.c b/mellanox/mlx5/mlx5_nic.c
+index 350957a6ef6e..0431c3908f80 100644
+--- a/mellanox/mlx5/mlx5_nic.c
++++ b/mellanox/mlx5/mlx5_nic.c
+@@ -2970,14 +2970,18 @@ static int mlx5_traverse_flow_table(MLX5State *s, const MLX5NICFlowTables *nic_f
+         goto default_rule;
+     }
+
+-    MLX_LOG_FATAL_COND(!nic_flow_tables_struct_addr, CMD, "nic_flow_tables_struct_addr shouldn't be NULL\n");
+-    MLX_LOG_FATAL_COND(!nic_flow_tables_struct_addr->flow_tables_bitmap, CMD, "nic_flow_tables_struct_addr->flow_tables_bitmap shouldn't be NULL\n");
++    if ((!nic_flow_tables_struct_addr) || (!nic_flow_tables_struct_addr->flow_tables_bitmap)) {
++        MLX_LOG_WARN(NIC, "%s is NULL for table type 0x%x (%s) of function 0x%x. Dropping packet\n",
++                     (nic_flow_tables_struct_addr) ? "flow_tables_bitmap" : "nic_flow_tables_struct_addr",
++                     ft_type, ft_type_name, s->function_id);
++        return -1;
++    }
+
+     /* check that the table exists (to prevent a crash on bad drivers which
+        may leave the flow tables in inconsistent state */
+     if (!mlx5_bitmap_is_set(nic_flow_tables_struct_addr->flow_tables_bitmap, table_id)) {
+         MLX_LOG_ERR(NIC, "%s table ID 0x%"PRIx64" doesn't exist when going over rules with incoming packet - flow table is inconsistent\n", ft_type_name, table_id);
+-        return 1;
++        return -1;
+     }
+
+     curr_flow_table = nic_flow_tables_struct_addr->flow_tables_arr[table_id];
+--
+2.29.2
+

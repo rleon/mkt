@@ -2,6 +2,10 @@
 # ---
 # git_url: http://webdev01.mtl.labs.mlnx:8080/git/simx.git
 # git_commit: de3c4765587eb20dad4d6a7da8424a82dfbe40ee
+# other_files:
+#  - 0001-mlx5-Avoided-SimX-crash-when-packet-arrives-to-unini.patch
+
+patch -p1 < /opt/0001-*.patch
 
 cat <<EOF > mlx-simx.spec
 %global debug_package %{nil}
