@@ -2,6 +2,7 @@
 """
 import os
 import utils
+import tempfile
 from utils.git import *
 from utils.docker import *
 from utils.cmdline import *

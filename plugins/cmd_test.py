@@ -14,7 +14,7 @@ def cmd_test(args):
     #test = section[test]
 
     try:
-        subprocess.run(["/home/leonro/src/scripts/sf"], check=True)
+        subprocess.run(["/home/leonro/src/scripts/sysfs"], check=True)
     except subprocess.CalledProcessError:
         exit("TEST FAILED")
 
