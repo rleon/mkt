@@ -49,7 +49,12 @@ def build_queue(args):
     queue = ('rc', 'next')
     for item in queue:
         git_checkout_branch("queue-%s" % (item))
-        git_reset_branch("saeed/net-%s" % (item))
+        # It is so sad that we can't rely on working net* branches.
+        # so we need to work harder to find something usable.
+        #git_reset_branch("saeed/net-%s" % (item))
+        sha = git_output(['log', '-1', 'ml/queue-%s' %(item), '--author=Saeed',
+            '--format=%H', '--grep=net-%s' %(item)])
+        git_reset_branch(sha)
         merge_with_rerere("testing/rdma-%s" % (item))
 
 def update_mlx5_next(args):
@@ -142,19 +147,29 @@ def cmd_update(args):
         if not is_master or not is_next or not is_rc:
             build_testing(args)
             build_queue(args)
+
         # Do it after build_* routines, because they can fail in
         # merge conflicts and we don't want to push again to gerrit
         if not is_next:
             upload_to_gerrit('mellanox/rdma-next-mlx', 'rdma-next-mlx',
                     'rdma-next', 'Iaaf0a270fff9fb7537bee5b90d53a5dff51238a8')
+            upload_to_gerrit('origin/master', 'rdma-next-mlx',
+                    'testing/rdma-next', 'Iaaf0a270fff9fb7537bee5b90d53a5dff51238a9')
+
         if not is_rc:
             upload_to_gerrit('mellanox/rdma-rc-mlx', 'rdma-rc-mlx',
                     'rdma-rc', 'I57c11684febd2aa97ebb44ae82368466458dd8f4')
+            upload_to_gerrit('origin/master', 'rdma-rc-mlx',
+                    'testing/rdma-rc', 'Iaaf0a270fff9fb7537bee5b90d53a5dff51238b9')
 
         upload_to_gerrit('origin/master', 'master',
                     'queue-next', 'I57c11684febd2aa97ebb44ae82368466458dd8f5')
         upload_to_gerrit('origin/master', 'master',
                     'queue-rc', 'I57c11684febd2aa97ebb44ae82368466458dd8f6')
+
+        if not is_master:
+            upload_to_gerrit('origin/master', 'master',
+                    'master', 'I57c11684febd2aa97ebb44ae82368466458dd8f7')
 
         git_checkout_branch(original_branch)
 
